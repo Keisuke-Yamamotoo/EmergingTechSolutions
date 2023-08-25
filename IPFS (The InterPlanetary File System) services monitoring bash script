@@ -1,0 +1,9 @@
+
+```bash
+#!/usr/bin/env bash
+while :
+do
+  find /var/ipfs -type f -name "*log" -exec du -ch {} + | grep total | awk '{print $1}'
+  sleep 10
+done
+```
