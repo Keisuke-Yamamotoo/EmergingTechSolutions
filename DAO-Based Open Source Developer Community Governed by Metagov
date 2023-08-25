@@ -1,0 +1,65 @@
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract DEV is ERC20, Ownable {
+    constructor() ERC20("Developer DAO", "DEV") {}
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
+    }
+}
+
+contract DeveloperDAO {
+    DEV dev;
+    address public governanceToken;
+    uint256 public quorumSize;
+
+    mapping(address => bool) public hasVoted;
+    address[] public developers;
+    mapping(address => uint256) public votesReceived;
+    mapping(address => uint256) public rewards;
+
+    modifier onlyDeveloper() {
+        require(dev.balanceOf(msg.sender) > 0, "DeveloperDAO: Not a developer");
+        _;
+    }
+
+    event NewDeveloper(address developer);
+    event ProposalAdded(uint256 proposalId);
+    event Vote(address developer, uint256 proposalId);
+
+    constructor() {
+        dev = new DEV();
+        governanceToken = address(dev);
+        quorumSize = 5;
+    }
+
+    function addDeveloper(address _developer) external onlyOwner {
+        developers.push(_developer);
+        rewards[_developer] = 0;
+        dev.mint(_developer, 100);
+        emit NewDeveloper(_developer);
+    }
+
+    function propose(uint256 _proposalId) external onlyDeveloper {
+        require(!hasVoted[_proposalId], "DeveloperDAO: Proposal already voted on");
+        votesReceived[_proposalId] = votesReceived[_proposalId] + 1;
+        hasVoted[_proposalId] = true;
+        emit Vote(msg.sender, _proposalId);
+    }
+
+    function updateReward(address _developer, uint256 _reward) external onlyOwner {
+        rewards[_developer] = _reward;
+    }
+
+    function withdrawReward() external {
+        uint256 _reward = rewards[msg.sender];
+        rewards[msg.sender] = 0;
+        (bool success, ) = msg.sender.call{value: _reward}("");
+        require(success, "DeveloperDAO: Failed to withdraw reward");
+    }
+}
